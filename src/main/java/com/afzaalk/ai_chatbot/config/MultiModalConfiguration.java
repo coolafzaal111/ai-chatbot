@@ -1,0 +1,72 @@
+package com.afzaalk.ai_chatbot.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+
+@Configuration
+public class MultiModalConfiguration {
+	
+	// Logger for debugging and monitoring bean creation
+	private static final Logger log = LoggerFactory.getLogger(MultiModalConfiguration.class);
+
+    // ==================== GEMINI CONFIGURATION PROPERTIES ====================
+    // These values are injected from application.properties/application.yml
+    // Using @Value allows externalized configuration - no hardcoded secrets!
+
+    @Value("${gemini.api.key}")
+    private String geminiKey;
+
+    @Value("${gemini.api.url}")
+    private String geminiUrl;
+
+    @Value("${gemini.api.completions.path}")
+    private String completionsPath;
+
+    @Value("${gemini.model.name}")
+    private String geminiModelName;
+    
+    
+    @Bean("openaiChatClient")
+    @Primary
+    public ChatClient openaiChatClient(OpenAiChatModel openAiChatModel) {
+
+        // ChatClient.create() wraps the model in a client with fluent API
+        ChatClient client = ChatClient.create(openAiChatModel);
+        return client;
+    }
+    
+    @Bean("geminiChatClient")
+    public ChatClient geminiChatClient() {
+        // Create the low-level API client pointing to Gemini's endpoint
+        OpenAiApi geminiApi = OpenAiApi.builder()
+                .baseUrl(geminiUrl)                    // Gemini's base URL instead of api.openai.com
+                .completionsPath(completionsPath)      // Gemini's completions path
+                .apiKey(geminiKey)                     // Gemini API key
+                .build();
+        log.info("Created geminiApi: {}", geminiApi);
+
+        // Create the chat model with Gemini-specific options
+        OpenAiChatModel geminiModel = OpenAiChatModel.builder()
+                .openAiApi(geminiApi)                  // Use our custom Gemini API client
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .model(geminiModelName)        // Specify which Gemini model to use
+                        .temperature(1.0)              // Controls randomness (0.0 = deterministic, 2.0 = very random)
+                        .build())
+                .build();
+        log.info("Created geminiModel: {}", geminiModel);
+
+        // Wrap the model in a ChatClient for easy interaction
+        ChatClient client = ChatClient.create(geminiModel);
+        log.info("Created openaiChatClient: {}", client);
+        return client;
+    }
+
+}
