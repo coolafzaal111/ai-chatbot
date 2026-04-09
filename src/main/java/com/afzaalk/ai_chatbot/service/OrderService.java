@@ -72,6 +72,123 @@ public class OrderService {
                 order.totalAmount
         );
     }
+    
+    /**
+     * Cancel an order if not yet shipped
+     */
+    public CancelResponse cancelOrder(String orderId, String reason) {
+        MockOrder order = orders.get(orderId);
+
+        if (order == null) {
+            return new CancelResponse(
+                    false,
+                    "Order not found",
+                    orderId,
+                    0.0
+            );
+        }
+
+        // Only allow cancellation for PROCESSING orders
+        if (order.status.equals("PROCESSING")) {
+            order.status = "CANCELLED";
+            return new CancelResponse(
+                    true,
+                    "Order cancelled successfully. Refund will be processed in 3-5 business days.",
+                    orderId,
+                    order.totalAmount
+            );
+        } else if (order.status.equals("SHIPPED") || order.status.equals("OUT_FOR_DELIVERY")) {
+            return new CancelResponse(
+                    false,
+                    "Order already shipped. Please initiate a return instead.",
+                    orderId,
+                    0.0
+            );
+        } else if (order.status.equals("DELIVERED")) {
+            return new CancelResponse(
+                    false,
+                    "Order already delivered. Please initiate a return instead.",
+                    orderId,
+                    0.0
+            );
+        } else {
+            return new CancelResponse(
+                    false,
+                    "Order already cancelled",
+                    orderId,
+                    0.0
+            );
+        }
+    }
+
+    /**
+     * Initiate return for delivered order
+     */
+    public ReturnResponse initiateReturn(String orderId, String reason) {
+        MockOrder order = orders.get(orderId);
+
+        if (order == null) {
+            return new ReturnResponse(
+                    false,
+                    "Order not found",
+                    null,
+                    null
+            );
+        }
+
+        // Only allow returns for DELIVERED orders
+        if (order.status.equals("DELIVERED")) {
+            String returnId = "RET-" + orderId;
+            String returnLabel = "LABEL-" + System.currentTimeMillis();
+
+            return new ReturnResponse(
+                    true,
+                    "Return initiated successfully. Return label sent to your email.",
+                    returnId,
+                    returnLabel
+            );
+        } else {
+            return new ReturnResponse(
+                    false,
+                    "Can only return delivered orders. Current status: " + order.status,
+                    null,
+                    null
+            );
+        }
+    }
+
+    /**
+     * Check refund status
+     */
+    public RefundResponse checkRefund(String orderId) {
+        MockOrder order = orders.get(orderId);
+
+        if (order == null) {
+            return new RefundResponse(
+                    orderId,
+                    "NOT_FOUND",
+                    0.0,
+                    "N/A"
+            );
+        }
+
+        if (order.status.equals("CANCELLED")) {
+            LocalDate refundDate = LocalDate.now().plusDays(3);
+            return new RefundResponse(
+                    orderId,
+                    "PROCESSING",
+                    order.totalAmount,
+                    refundDate.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+            );
+        } else {
+            return new RefundResponse(
+                    orderId,
+                    "NO_REFUND",
+                    0.0,
+                    "N/A - Order not cancelled"
+            );
+        }
+    }
 
     // Inner class for mock orders
     private static class MockOrder {
