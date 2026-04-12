@@ -265,10 +265,10 @@
 
   <div class="mode-switch">
     <button class="mode-btn active" onclick="switchMode('basic')">
-      Video 1: Basic (Track Orders)
+      Basic (Track Orders)
     </button>
     <button class="mode-btn" onclick="switchMode('full')">
-      Video 2: Full Support (All Actions)
+      Full Support (All Actions)
     </button>
   </div>
 
@@ -325,9 +325,9 @@
           title: 'Basic Order Tracking',
           info: 'AI can call: getOrderStatus()',
           samples: [
-              { text: 'Track order 12345', query: 'Where is my order 12345?' },
-              { text: 'Check order 67890', query: 'What about order 67890?' },
-              { text: 'Delivery estimate', query: 'When will my order 22222 arrive?' }
+              { text: 'Track order 10393', query: 'Where is my order 10393?' },
+              { text: 'Check order 16889', query: 'What about order 16889?' },
+              { text: 'Delivery estimate', query: 'When will my order 27881 arrive?' }
           ],
           endpoint: '/api/support/chat/basic'
       },
@@ -335,9 +335,9 @@
           title: 'Full Support Bot',
           info: 'AI can call: getOrderStatus, cancelOrder, initiateReturn, checkRefund',
           samples: [
-              { text: 'Cancel order 11111', query: 'I want to cancel order 11111' },
-              { text: 'Return order 67890', query: 'I want to return order 67890' },
-              { text: 'Check refund 33333', query: 'What is the refund status for order 33333?' }
+              { text: 'Cancel order 198699', query: 'I want to cancel order 198699' },
+              { text: 'Return order 163890', query: 'I want to return order 163890' },
+              { text: 'Check refund 178399', query: 'What is the refund status for order 178399?' }
           ],
           endpoint: '/api/support/chat/full'
       }
