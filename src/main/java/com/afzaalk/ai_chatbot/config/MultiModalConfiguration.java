@@ -3,7 +3,10 @@ package com.afzaalk.ai_chatbot.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
@@ -12,16 +15,15 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import com.afzaalk.ai_chatbot.advisor.PiiRedactionAdvisor;
+
 @Configuration
 public class MultiModalConfiguration {
 	
 	// Logger for debugging and monitoring bean creation
 	private static final Logger log = LoggerFactory.getLogger(MultiModalConfiguration.class);
 
-    // ==================== GEMINI CONFIGURATION PROPERTIES ====================
-    // These values are injected from application.properties/application.yml
-    // Using @Value allows externalized configuration - no hardcoded secrets!
-
+    // GEMINI CONFIGURATION PROPERTIES 
     @Value("${gemini.api.key}")
     private String geminiKey;
 
@@ -34,10 +36,17 @@ public class MultiModalConfiguration {
     @Value("${gemini.model.name}")
     private String geminiModelName;
     
+    @Bean
+    public ChatMemory chatMemory() {
+        return MessageWindowChatMemory.builder()
+                .maxMessages(10)  // Keep last 10 messages
+                .build();
+    }
+    
     
     @Bean("openaiChatClient")
     @Primary
-    public ChatClient openaiChatClient(OpenAiChatModel openAiChatModel) {
+    public ChatClient openaiChatClient(OpenAiChatModel openAiChatModel, ChatMemory chatMemory) {
 
         // ChatClient.create() wraps the model in a client with fluent API
 //        ChatClient client = ChatClient.create(openAiChatModel);
@@ -48,19 +57,18 @@ public class MultiModalConfiguration {
                 // ADVISOR 1: PII Redaction (Security)
                 // Removes sensitive data BEFORE it reaches logging or AI.
                 // Must run first to ensure no PII leaks anywhere.
-//                new PiiRedactionAdvisor(),
+                new PiiRedactionAdvisor(),
 
                 // ADVISOR 2: Simple Logger (Debugging/Monitoring)
-                // Logs requests and responses for debugging.
                 // Runs after PII redaction, so logs are safe.
-                new SimpleLoggerAdvisor()
+                new SimpleLoggerAdvisor(),		// Logs requests and responses for debugging
 
                 // ADVISOR 3: Chat Memory (Conversation Context)
                 // Automatically manages conversation history.
                 // - On request: Adds previous messages to the prompt
                 // - On response: Stores the new exchange in memory
                 // Uses the injected chatMemory bean for storage.
-//                MessageChatMemoryAdvisor.builder(chatMemory).build()
+                MessageChatMemoryAdvisor.builder(chatMemory).build()
         );
     	
     	ChatClient client = builder.build();
@@ -69,7 +77,7 @@ public class MultiModalConfiguration {
     }
     
     @Bean("geminiChatClient")
-    public ChatClient geminiChatClient() {
+    public ChatClient geminiChatClient(ChatMemory chatMemory) {
         // Create the low-level API client pointing to Gemini's endpoint
         OpenAiApi geminiApi = OpenAiApi.builder()
                 .baseUrl(geminiUrl)                    // Gemini's base URL instead of api.openai.com
@@ -92,22 +100,9 @@ public class MultiModalConfiguration {
         ChatClient.Builder builder = ChatClient.builder(geminiModel);
         
         builder.defaultAdvisors(
-                // ADVISOR 1: PII Redaction (Security)
-                // Removes sensitive data BEFORE it reaches logging or AI.
-                // Must run first to ensure no PII leaks anywhere.
-//                new PiiRedactionAdvisor(),
-
-                // ADVISOR 2: Simple Logger (Debugging/Monitoring)
-                // Logs requests and responses for debugging.
-                // Runs after PII redaction, so logs are safe.
-                new SimpleLoggerAdvisor()
-
-                // ADVISOR 3: Chat Memory (Conversation Context)
-                // Automatically manages conversation history.
-                // - On request: Adds previous messages to the prompt
-                // - On response: Stores the new exchange in memory
-                // Uses the injected chatMemory bean for storage.
-//                MessageChatMemoryAdvisor.builder(chatMemory).build()
+                new PiiRedactionAdvisor(),
+                new SimpleLoggerAdvisor(),
+                MessageChatMemoryAdvisor.builder(chatMemory).build()
         );
     	
     	ChatClient client = builder.build();
